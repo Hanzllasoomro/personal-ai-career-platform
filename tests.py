@@ -93,7 +93,35 @@ def main():
     html_out = render(con)
     check("dashboard renders profiles and applications without crashing",
           "Personal AI Career Platform" in html_out and "Test Engineer" in html_out)
-    print("All MVP v1.0 tests passed.")
+    # --- v1.1: full live fusion ---
+    from trends import (parse_arxiv_xml, parse_stackoverflow, fuse_all_trends,
+                        suggest_project as suggest_project_v11)
+    sample_arxiv = '''<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>  Local LLM Agents
+    for Code Review </title><link title="pdf" href="https://arxiv.org/pdf/1234.5678"/><published>2026-10-20T00:00:00Z</published></entry></feed>'''
+    ax = parse_arxiv_xml(sample_arxiv)
+    check("arXiv parser extracts title, pdf link and date", len(ax) == 1 and ax[0]["source"] == "arxiv" and "1234.5678" in ax[0]["url"])
+    so = parse_stackoverflow({"items": [{"title": "How to use Python FastAPI?", "link": "https://example.com/q", "score": 42}]})
+    check("Stack Overflow parser extracts title, link and votes", so[0]["score"] == "42 votes")
+    fused, _notes = fuse_all_trends(
+        github_fn=lambda: [{"topic": "Cool Python Tool", "source": "github-search", "url": "https://example.com/g", "score": "100 stars"}],
+        hn_fn=lambda: [{"topic": "Cool Python Tool", "source": "hacker-news", "url": "https://example.com/h", "score": "50 points"}],
+        arxiv_fn=lambda: [{"topic": "Local LLM Agents for Code Review", "source": "arxiv", "url": "https://example.com/a", "score": "published 2026-10-20"}],
+        so_fn=lambda: (_ for _ in ()).throw(RuntimeError("offline")),
+        issues_fn=lambda: [])
+    check("fusion deduplicates the same topic across sources", len([t for t in fused if "Cool Python Tool" in t["topic"]]) == 1)
+    check("fusion keeps distinct sources", {t["source"] for t in fused} >= {"github-search", "arxiv"})
+    proj11 = suggest_project_v11(pr, ["Kubernetes"], fused)
+    check("v1.1 suggestion picks a gap-relevant trend and lists supporting signals",
+          proj11["gap"] == "Kubernetes" and isinstance(proj11["supporting"], list))
+    fused_off, notes_off = fuse_all_trends(
+        github_fn=lambda: (_ for _ in ()).throw(RuntimeError("offline")),
+        hn_fn=lambda: (_ for _ in ()).throw(RuntimeError("offline")),
+        arxiv_fn=lambda: (_ for _ in ()).throw(RuntimeError("offline")),
+        so_fn=lambda: (_ for _ in ()).throw(RuntimeError("offline")),
+        issues_fn=lambda: (_ for _ in ()).throw(RuntimeError("offline")))
+    check("all-live-sources-fail still falls back to labelled seed",
+          fused_off[0]["source"] == "curated-seed" and any("curated seed" in n for n in notes_off))
+    print("All MVP v1.1 tests passed.")
     return 0
 
 if __name__ == "__main__":

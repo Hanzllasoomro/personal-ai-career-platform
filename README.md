@@ -1,3 +1,24 @@
+# Personal AI Career Platform — v1.1 (open source, MIT)
+
+## v1.1: full live trend fusion for Project Forge
+
+```bash
+python3 app.py trends-list --query "python"
+python3 app.py project-suggest --profile-id 1 --target-skills "Kubernetes, LLM Ops" --query "LLM"
+python3 app.py trends-list --query "python" --sources github,arxiv
+```
+
+Five live sources, each labelled, deduplicated by topic, ranked by gap/query
+relevance then signal strength (stars / points / votes):
+
+- **GitHub Search** — repos created in the last 30 days, by stars, optionally filtered by your query. Set `GITHUB_TOKEN` locally to raise the 60/hour unauthenticated limit.
+- **Hacker News** — top stories by points/hour velocity, not raw score. Non-tech stories are filtered out of project ideas.
+- **arXiv** — newest preprints for your query (free, no key), with PDF link and published date.
+- **Stack Overflow** — highest-voted questions for your tag. Note: the Stack Exchange API is rate-limited per IP, so on a shared IP it may throttle — that failure is labelled, not hidden, and the other sources still work.
+- **GitHub issues** — `good first issue` / `help wanted` style scoped problems for your query, so an idea can become a real contribution, not just a demo.
+
+A project suggestion now shows its main trend **plus up to 3 supporting signals from different sources**, so you can see the idea is fused, not cherry-picked from one feed. If every live source fails, it falls back to the labelled curated seed — never an invented trend.
+
 # Personal AI Career Platform — v1.0 (open source, MIT)
 
 **Posture: draft & approve only. This code never submits a job application.**

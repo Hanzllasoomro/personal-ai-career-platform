@@ -300,7 +300,8 @@ def main(argv=None):
     a = sub.add_parser("cv-tailor"); a.add_argument("--profile-id", type=int, required=True); a.add_argument("--demo-job", type=int, default=0)
     a = sub.add_parser("scholarships-match"); a.add_argument("--profile-id", type=int, required=True); a.add_argument("--country", action="append", default=[])
     a = sub.add_parser("masters-match"); a.add_argument("--field", default=""); a.add_argument("--level", default="master"); a.add_argument("--country", default="")
-    a = sub.add_parser("project-suggest"); a.add_argument("--profile-id", type=int, required=True); a.add_argument("--target-skills", default="")
+    a = sub.add_parser("project-suggest"); a.add_argument("--profile-id", type=int, required=True); a.add_argument("--target-skills", default=""); a.add_argument("--query", default=""); a.add_argument("--sources", default="")
+    a = sub.add_parser("trends-list"); a.add_argument("--query", default=""); a.add_argument("--sources", default="")
     a = sub.add_parser("plan-learn"); a.add_argument("--profile-id", type=int, required=True); a.add_argument("--gaps", default="")
     a = sub.add_parser("jobs-usajobs"); a.add_argument("keyword")
     a = sub.add_parser("jobs-adzuna"); a.add_argument("keyword"); a.add_argument("--country", default="gb")
@@ -389,15 +390,26 @@ def main(argv=None):
         if not matches:
             print("No matching search starters - try a broader field or country (Germany / UK / Australia).")
     elif args.cmd == "project-suggest":
-        from trends import fuse_trends, suggest_project_v1
+        from trends import fuse_all_trends, suggest_project
         pr = get_profile(con, args.profile_id)
-        trends, notes = fuse_trends()
+        skills = [s.strip() for s in args.target_skills.split(",") if s.strip()]
+        query = args.query or (skills[0] if skills else "")
+        sources = [s.strip() for s in args.sources.split(",") if s.strip()] or None
+        trends, notes = fuse_all_trends(query=query, sources=sources)
         for n in notes:
             print(n)
-        proj = suggest_project_v1(pr, [s.strip() for s in args.target_skills.split(",") if s.strip()], trends)
+        proj = suggest_project(pr, skills, trends, query=query)
         print(f"\nTitle: {proj['title']}\nGap: {proj['gap']}\nTrend: {proj['trend']}")
         for step in proj["scaffold"]:
             print(f"- {step}")
+    elif args.cmd == "trends-list":
+        from trends import fuse_all_trends
+        sources = [s.strip() for s in args.sources.split(",") if s.strip()] or None
+        trends, notes = fuse_all_trends(query=args.query, sources=sources)
+        for n in notes:
+            print(n)
+        for t in trends[:15]:
+            print(f"- [{t['source']}] {t['topic']} | {t.get('url','')} ({t.get('score','')})")
     elif args.cmd == "plan-learn":
         pr = get_profile(con, args.profile_id)
         gaps = [s.strip() for s in args.gaps.split(",") if s.strip()]
